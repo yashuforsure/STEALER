@@ -40,6 +40,7 @@ echo      6   Poora test tool
 echo      7   Kisi bhi file me inject   (exe / pdf / photo)
 echo      8   DATA KAHA JAYE - webhook set / badlo
 echo      9   Bot token (live sender list)
+echo     10   Dependencies install (pyinstaller)
 echo      0   Band karo
 echo.
 echo   tip: koi bhi file is bat pe drag kar do - seedha bind ho jayegi.
@@ -58,6 +59,7 @@ if "%pick%"=="6" goto testtool
 if "%pick%"=="7" goto bindfile
 if "%pick%"=="8" goto sethook
 if "%pick%"=="9" goto settoken
+if "%pick%"=="10" goto deps
 if "%pick%"=="0" goto end
 goto menu
 
@@ -156,6 +158,16 @@ set "TOK="
 set /p "TOK=   token: "
 if not defined TOK goto menu
 python setwebhook.py --token "%TOK%"
+echo.
+pause
+goto menu
+
+:deps
+cls
+echo.
+echo   --- python dependencies ---
+echo.
+call "%~dp0setup_deps.bat"
 echo.
 pause
 goto menu

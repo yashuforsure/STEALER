@@ -30,6 +30,20 @@ HIDDEN = [
 ]
 
 
+def ensure_pyinstaller() -> None:
+    """Fail with the exact command instead of a bare ModuleNotFoundError."""
+    try:
+        import PyInstaller  # noqa: F401
+    except ModuleNotFoundError:
+        raise SystemExit(
+            "[!] PyInstaller is not installed for this interpreter:\n"
+            f"    {sys.executable}\n"
+            "    install it once:\n"
+            f'    "{sys.executable}" -m pip install --upgrade pyinstaller\n'
+            "    or double-click setup_deps.bat"
+        )
+
+
 def build(name: str, work: str, admin: bool) -> None:
     cmd = [sys.executable, "-m", "PyInstaller", "--noconfirm", "--clean",
            "--onefile", "--noconsole", "--name", name,
@@ -59,6 +73,7 @@ def main() -> int:
     if not SOURCE.is_file():
         raise SystemExit(f"missing {SOURCE}")
 
+    ensure_pyinstaller()
     build("Test App", "exe_build_test", admin=True)
     build("Test App (no admin)", "exe_build_na", admin=False)
 

