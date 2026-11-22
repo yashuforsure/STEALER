@@ -206,8 +206,8 @@ def doctor():
             pass
         try:
             disk = hv._disk_gb()
-            info("  disk " + str(disk) + " GB" + ("   <-- 55 se kam, rukega" if disk and disk < 55 else ""))
-            if disk and disk < 55:
+            info("  disk " + str(disk) + " GB" + ("   <-- 20 se kam, rukega" if disk and disk < 20 else ""))
+            if disk and disk < 20:
                 problems += 1
         except Exception:
             pass

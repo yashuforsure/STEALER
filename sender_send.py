@@ -208,20 +208,27 @@ def main() -> int:
     args = parser.parse_args()
 
     webhook = (args.webhook or DEFAULT_WEBHOOK or "").strip()
-    refresh = args.refresh or (not args.no_refresh and
-                               bool(senders.bot_tokens(args.token)))
+    has_token = bool(senders.bot_tokens(args.token))
+    refresh = args.refresh or (not args.no_refresh and has_token)
     rows = senders.discover(refresh=refresh, webhook=webhook,
                             token=args.token, limit=args.limit)
 
     print()
     line("=")
-    print("  DATA SENDERS - PC-wise sorted" + ("  [LIVE]" if refresh else "  [CACHE]"))
+    print("  DATA SENDERS - PC-wise sorted" + ("  [LIVE]" if has_token else "  [LOCAL]"))
     line("=")
+    if not has_token:
+        info("bot token nahi mila - sirf local drops dikh rahe hain")
+        info("saare PC dekhne ke liye: setwebhook.py --token TOKEN (ya menu option 9)")
+        print()
     print(senders.table(rows))
     print()
     if not rows:
         bad("abhi koi data sender nahi mila")
-        info("bot token ke saath --refresh chalao, ya phir pehle drop aane do")
+        info("webhook sirf likh sakta hai - channel history padhne ke liye")
+        info("bot token chahiye (Discord ka rule, tool ka nahi).")
+        info("ya isi PC pe payload chalao: drop local index me aa jayega.")
+        info("token: setwebhook.py --token TOKEN   phir: --refresh --list")
         return 1
     if args.list:
         return 0

@@ -9,4 +9,8 @@ venv/
 .venv/
 .env
 discord_read.json
+received/
+sender_cache.json
+sender_inbox/
+sorted_senders/
 *.log

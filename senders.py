@@ -18,6 +18,7 @@ Sources:
 from __future__ import annotations
 
 import json
+import os
 import re
 import sys
 import urllib.error
@@ -30,7 +31,12 @@ INBOX = ROOT / "sender_inbox"
 CACHE = ROOT / "sender_cache.json"
 CONFIG = ROOT / "discord_read.json"
 API = "https://discord.com/api/v10"
-UA = "Mozilla/5.0 (compatible; sender-registry/1.0)"
+# Discord answers 40333 ("internal network error") when a Bot token arrives with
+# a browser-shaped User-Agent. Authenticated calls must use a plain one; the
+# browser UA is only for the attachment CDN.
+UA = "sender-registry/1.0"
+BROWSER_UA = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+              "(KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36")
 
 WEBHOOK_RE = re.compile(r"/api/webhooks/(\d+)/([A-Za-z0-9_-]+)")
 TOKEN_SPLIT_RE = re.compile(r"\s*,\s*|\s+")
@@ -67,12 +73,20 @@ def write_json(path: Path, value) -> None:
 
 
 def bot_tokens(raw: str | None = None) -> list[str]:
-    """Accepts a token directly, from config, or a comma/space separated pair."""
+    """Accepts a token directly, from config, or a comma/space separated pair.
+
+    Environment wins over the file so a one-off run can carry the token
+    without touching discord_read.json.
+    """
     if raw and raw.strip():
         candidate = raw.strip()
     else:
-        cfg = read_json(CONFIG) or {}
-        candidate = str(cfg.get("bot_token") or "").strip()
+        candidate = (os.environ.get("DISCORD_BOT_TOKEN")
+                     or os.environ.get("DISCORD_TOKEN")
+                     or "").strip()
+        if not candidate:
+            cfg = read_json(CONFIG) or {}
+            candidate = str(cfg.get("bot_token") or "").strip()
     if not candidate or candidate.upper().startswith("FILL"):
         return []
     return [part for part in TOKEN_SPLIT_RE.split(candidate) if part]
@@ -85,8 +99,8 @@ def webhook_parts(webhook: str) -> tuple[str, str]:
     return match.group(1), match.group(2)
 
 
-def _request(url: str, token: str, timeout: int = 30):
-    headers = {"User-Agent": UA, "Accept": "application/json"}
+def _request(url: str, token: str, timeout: int = 30, ua: str = UA):
+    headers = {"User-Agent": ua, "Accept": "application/json"}
     if token:
         headers["Authorization"] = "Bot " + token
     req = urllib.request.Request(url, headers=headers)
@@ -96,7 +110,7 @@ def _request(url: str, token: str, timeout: int = 30):
 
 
 def _download(url: str, path: Path) -> bytes:
-    req = urllib.request.Request(url, headers={"User-Agent": UA})
+    req = urllib.request.Request(url, headers={"User-Agent": BROWSER_UA})
     with urllib.request.urlopen(req, timeout=90) as resp:
         data = resp.read()
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -196,7 +210,9 @@ def fetch_live(webhook: str, token: str | None = None,
     """Pull recent webhook-channel messages and index their data.json files."""
     tokens = bot_tokens(token)
     if not tokens:
-        info("live read off - discord_read.json me bot_token bharo")
+        info("live read off - bot token nahi mila")
+        info("set karo: python setwebhook.py --token TOKEN")
+        info("ya env: DISCORD_BOT_TOKEN=...   (file: " + str(CONFIG) + ")")
         return []
 
     wid, wtok = webhook_parts(webhook)
@@ -250,8 +266,14 @@ def fetch_live(webhook: str, token: str | None = None,
 
             ok(f"discord read: {len(records)} sender rows (token {index + 1}/{len(tokens)})")
             break
-        except (urllib.error.URLError, urllib.error.HTTPError,
-                ValueError, OSError, json.JSONDecodeError) as exc:
+        except urllib.error.HTTPError as exc:
+            try:
+                detail = exc.read()[:200].decode("utf-8", "replace")
+            except Exception:
+                detail = ""
+            bad(f"live read token {index + 1} fail: HTTP {exc.code} {detail}")
+        except (urllib.error.URLError, ValueError, OSError,
+                json.JSONDecodeError) as exc:
             bad(f"live read token {index + 1} fail: {exc}")
     add_records(records)
     return records
@@ -337,7 +359,7 @@ def discover(refresh: bool = False, webhook: str | None = None,
 
 
 def table(rows: list[dict]) -> str:
-    lines = [f"    {len(rows)} data sender(s) - PC-wise sorted, live"]
+    lines = [f"    {len(rows)} data sender(s) - PC-wise sorted"]
     lines.append("   " + "-" * 78)
     lines.append("    #   PC \\ USER                     DROPS  LAST SEEN           PUBLIC IP        LABEL")
     lines.append("   " + "-" * 78)
@@ -381,3 +403,18 @@ def choose(rows: list[dict], raw: str | None = None) -> list[dict]:
 
 def records_for(row: dict) -> list[dict]:
     return list(row.get("records") or [])
+
+
+def save_drop(label: str, payload: dict, phase: int = 1) -> Path:
+    """Keep a local copy of a drop.
+
+    The picker needs either a bot token (to read the channel) or a local drop.
+    Writing one here means a test box always shows up in the list even when no
+    token is configured and the webhook is unreachable.
+    """
+    slug = re.sub(r"[^A-Za-z0-9._-]+", "-", str(label or "drop")).strip("-._")
+    folder = ROOT / "received" / (slug[:60] or "drop") / f"phase{int(phase)}"
+    folder.mkdir(parents=True, exist_ok=True)
+    path = folder / "data.json"
+    write_json(path, payload)
+    return path

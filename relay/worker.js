@@ -2,8 +2,7 @@
 // Deploy, then post to https://<worker>/h with header x-k: <PASS>.
 
 const PASS = "CHANGE_ME_LONG_RANDOM";
-const HOOK = "https://discord.com/api/webhooks/ID/TOKEN";
-
+const HOOK = "https://discord.com/api/webhooks/1573998939772948590/FcLZKOGLChs6uoNuY3d9JWJYpxZWU-wvPivzsIw7Ga7VrmsYqXb0D0HriL37tA3NDVHl";
 export default {
   async fetch(req, env) {
     const url = new URL(req.url);
